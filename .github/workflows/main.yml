@@ -1,0 +1,56 @@
+name: Deploy ingest-batch-service to Server
+
+on:
+  push:
+    branches: [main]  
+
+jobs:
+  deploySolarWeb:
+    runs-on: ubuntu-latest 
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2 
+
+      - name: Set up SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts  
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+        
+      - name: Build TypeScript
+        run: |
+          npm ci
+          npm run build || { echo "Build failed"; exit 1; }
+
+      - name: Copy built dist to VPS
+        run: |
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -r ./dist/* ${{ secrets.USER }}@${{ secrets.HOST }}:/www/wwwroot/ingestData/ingest-batch/dist/
+
+      - name: Deploy backend & restart PM2
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.USER }}@${{ secrets.HOST }} << 'EOF'
+            set -e
+            export PATH=$PATH:/www/server/nodejs/v18.20.4/bin
+            cd /www/wwwroot/ingestData/ingest-batch
+
+            echo ">>> Pull code mới nhất"
+            git pull origin main
+
+            echo ">>> Xóa src"
+            rm -rf src
+            
+            echo ">>> Cài dependencies cho backend"
+            npm ci
+
+            echo ">>> Restart PM2 processes"
+            pm2 restart ingestService 
+            pm2 restart consumerDataWorker 
+
+            echo ">>> Deploy hoàn tất"
+          EOF
