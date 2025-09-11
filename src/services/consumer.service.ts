@@ -12,7 +12,7 @@ type GroupedEvents = {
     data : {
       [table: string]: {
         insert: any[];
-        update: { condition: any; value: any }[];
+        update: { condition: any; update: any }[];
       };
     }
   };
@@ -36,22 +36,16 @@ const groupEvent = async(entries:[id: string, fields: string[]][])=>{
         update: []
       };
     }
+    const data = JSON.parse(fields[9]!);
     if(type =='insert'){
-      const data = JSON.parse(fields[9]!);
-      grouped[database]!["data"]![table]!['insert'].push(data);
+      grouped[database]!["data"]![table]!['insert'].push(...data);
     }else if(type == 'update'){
-      const condition = JSON.parse(fields[9]!);
-      const value = JSON.parse(fields[11]!);
-      grouped[database]!["data"]![table]!['update'].push({
-        "condition" : condition,
-        "value" : value
-      })
+      grouped[database]!["data"]![table]!['update'].push(...data)
     }
     await redis.xdel("solar_stream", id);
   }
   return grouped;
 }
-
 async function consumer() {
   const entries = await redis.xrange("solar_stream", "-", "+");
   if (entries.length === 0) {
@@ -64,6 +58,7 @@ async function consumer() {
     console.log(entries.length);
   }
   const grouped = await groupEvent(entries);
+  // console.dir(grouped,{depth: null})
 
   //insert/update to database
   for (const [dbName, payload] of Object.entries(grouped)) {
@@ -126,7 +121,7 @@ async function consumer() {
                 return `${cond.field}${cond.operator}'${cond.value}'`
               });
               const conditions = conditionsArr.join(' AND ');
-              const valuesArr = row.value.map((val: { field: string; value: any; })=>{
+              const valuesArr = row.update.map((val: { field: string; value: any; })=>{
                 return `${val.field}='${val.value}'`
               })
               const values = valuesArr.join(', ');

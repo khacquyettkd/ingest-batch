@@ -39,19 +39,24 @@ exports.solarInsert = async (req: Request, res:Response) => {
         message: `Unsupported table: ${table}` 
       });
     }
-    const parsed = schema.safeParse(data);
-    if (!parsed.success) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid data format"
-      });
+    const validRows = [];
+    for (const row of data) {
+      const parsed = schema.safeParse(row);
+      if (!parsed.success) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid data format in row",
+          error: parsed.error.format()
+        });
+      }
+      validRows.push(parsed.data);
     }
     const event = [
       "t", 'insert',
       "db", databaseName,
       "tb", table,
       "b", brand,
-      "d", JSON.stringify(data)
+      "d", JSON.stringify(validRows)
     ]
     await pushToStream(event);
     return res.status(200).json({ 
@@ -71,7 +76,7 @@ exports.solarUpdate= async (req: Request, res:Response) => {
     if (!payload.success) {
       return res.status(400).json({ success: false, message: "Invalid payload" });
     }
-    const { deviceId, apiKey, brand, table, condition, update } = payload.data;
+    const { deviceId, apiKey, brand, table, data } = payload.data;
     const valid = validateDevice(deviceId,apiKey);
     if(!valid.success){
       return res.status(401).json({ 
@@ -88,8 +93,18 @@ exports.solarUpdate= async (req: Request, res:Response) => {
       });
     }
     const validFields = Object.keys(schema.shape);
-    const invalidConditions = condition.filter((c: Condition) => !validFields.includes(c.field));
-    const invalidValues = update.filter((v: Value) => !validFields.includes(v.field));
+    const invalidConditions: any[] = [];
+    const invalidValues: any[] = [];
+
+    for (const item of data) {
+      const { condition, update } = item;
+
+      const badConditions = condition.filter((c: Condition) => !validFields.includes(c.field));
+      if (badConditions.length > 0) invalidConditions.push(...badConditions);
+
+      const badValues = update.filter((v: Value) => !validFields.includes(v.field));
+      if (badValues.length > 0) invalidValues.push(...badValues);
+    }
 
     if (invalidConditions.length > 0 || invalidValues.length > 0) {
       return res.status(400).json({
@@ -101,13 +116,13 @@ exports.solarUpdate= async (req: Request, res:Response) => {
         }
       });
     }
+
     const event = [
       "t",'update',
       "db",databaseName,
       "tb",table, 
       "b",brand, 
-      "c",JSON.stringify(condition),
-      "u",JSON.stringify(update)
+      "d", JSON.stringify(data)
     ]
     await pushToStream(event);
     return res.status(200).json({ 

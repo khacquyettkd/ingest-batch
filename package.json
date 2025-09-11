@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon --watch src --exec tsx src/server.ts",
+    "worker": "tsx src/worker/batchWorker.ts",
+    "test": "k6 run tests/solar.test.js",
     "build": "tsc"
   },
   "author": "",

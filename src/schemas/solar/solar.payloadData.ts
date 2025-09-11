@@ -6,7 +6,7 @@ const SolarInsertSchema = z.object({
     "apiKey": z.string(),
     "table": z.string(),
     "brand": z.string(),
-    "data": z.unknown(),
+    "data": z.array(z.record(z.string(), z.unknown())).min(1)
 }).strict();
 
 const ConditionSchema = z.object({
@@ -23,8 +23,10 @@ const SolarUpdateSchema = z.object({
     "apiKey": z.string(),
     "table": z.string(),
     "brand": z.string(),
-    "condition": z.array(ConditionSchema).min(1),  //[{ "field": "name","operator":"=", "value:"a"}, {"field":"age","operator":">": "value":18}]
-    "update": z.array(ValueSchema).min(1),      //[{"field":"school", "value:"A", "field":"grade","value": 12}]
+    "data" : z.array(z.object({
+        "condition": z.array(ConditionSchema).min(1),  //[{ "field": "name","operator":"=", "value:"a"}, {"field":"age","operator":">": "value":18}]
+        "update": z.array(ValueSchema).min(1),      //[{"field":"school", "value:"A", "field":"grade","value": 12}]
+    }))
 }).strict();
 
 type Condition = ZodNamespace.infer<typeof ConditionSchema>;

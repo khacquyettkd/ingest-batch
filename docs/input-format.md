@@ -12,6 +12,7 @@
     "data": object{"column_name":value,...}, //full columns
 }
 ##update:
+-Endpoint: ingest.solar-gps.com/solar
 -method: 'PATCH'
 -body: {
     "deviceId": number,
