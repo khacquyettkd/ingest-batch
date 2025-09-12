@@ -9,7 +9,7 @@
     "apiKey": string,
     "table": string,
     "brand": string,
-    "data": object{"column_name":value,...}, //full columns
+    "data": array(object{"column_name":value,...}) //full columns
 }
 ##update:
 -Endpoint: ingest.solar-gps.com/solar
@@ -19,19 +19,23 @@
     "apiKey": string,
     "table": string,
     "brand": string,
-    "condition": array([
-        { 
-            "field": string, 
-            "operator": '=' | '>' | '<' | '>=' | '<=' | '!=', 
-            "value: string | number | boolean
-        },
-        ...
-    ]), 
-    "update": array([
-        {
-            "field": string, 
-            "value: string | number | boolean
-        },
-        ...
-    ])
+    "data" : array(
+        object({
+            "condition": array([
+                { 
+                    "field": string, 
+                    "operator": '=' | '>' | '<' | '>=' | '<=' | '!=', 
+                    "value: string | number | boolean
+                },
+                ...
+            ]), 
+            "update": array([
+                {
+                    "field": string, 
+                    "value: string | number | boolean
+                },
+                ...
+            ])
+        })
+    )
 }
